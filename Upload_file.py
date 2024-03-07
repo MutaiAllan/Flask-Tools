@@ -1,6 +1,7 @@
-from flask import Flask, request, redirect, url_for, make_response, send_from_directory
+from flask import Flask, request, redirect, url_for, make_response, send_from_directory, jsonify
 from werkzeug.utils import secure_filename
 import os
+import base64
 
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
@@ -52,6 +53,23 @@ def download_file(filename):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
     except FileNotFoundError:
         return make_response("File not found", 404)
+    
+def encode_file(file_path):
+    with open(file_path, 'rb') as f:
+        encoded_bytes = base64.b64encode(f.read())
+        return encoded_bytes.decode('utf-8')
+
+@app.route('/files', methods=['GET'])
+def get_files():
+    try:
+        files_data = {}
+        for root, _, files in os.walk(app.config['UPLOAD_FOLDER']):
+            for file in files:
+                file_path = os.path.join(root, file)
+                files_data[file] = encode_file(file_path)
+        return jsonify(files_data)
+    except Exception as e:
+        return make_response(str(e), 500)
     
 
 if __name__ == '__main__':
