@@ -1,7 +1,8 @@
-from flask import Flask, request, redirect, url_for, make_response, send_from_directory, jsonify
+from flask import Flask, request, redirect, url_for, make_response, send_from_directory, jsonify, send_file
 from werkzeug.utils import secure_filename
 import os
 import base64
+from zipfile import ZipFile
 
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
@@ -68,6 +69,22 @@ def get_files():
                 file_path = os.path.join(root, file)
                 files_data[file] = encode_file(file_path)
         return jsonify(files_data)
+    except Exception as e:
+        return make_response(str(e), 500)
+    
+@app.route('/download_all', methods=['GET'])
+def download_all_files():
+    try:
+        zip_filename = 'all_files.zip'
+        with ZipFile(zip_filename, 'w') as zipf:
+            # Add all files in UPLOAD_FOLDER to the zip archive
+            for root, _, files in os.walk(app.config['UPLOAD_FOLDER']):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    zipf.write(file_path, os.path.relpath(file_path, app.config['UPLOAD_FOLDER']))
+        
+        # Send the zip archive as a file attachment
+        return send_file(zip_filename, as_attachment=True)
     except Exception as e:
         return make_response(str(e), 500)
     
